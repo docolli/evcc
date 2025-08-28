@@ -37,7 +37,7 @@ import (
 	"github.com/evcc-io/evcc/server/db/settings"
 	"github.com/evcc-io/evcc/server/eebus"
 	"github.com/evcc-io/evcc/server/modbus"
-	"github.com/evcc-io/evcc/server/oauth2redirect"
+	"github.com/evcc-io/evcc/server/providerauth"
 	"github.com/evcc-io/evcc/tariff"
 	"github.com/evcc-io/evcc/util"
 	"github.com/evcc-io/evcc/util/config"
@@ -491,6 +491,7 @@ func configureSponsorship(token string) (err error) {
 		if token, err = settings.String(keys.SponsorToken); err != nil {
 			return err
 		}
+		sponsor.SetFromYaml(false) // from database
 	}
 
 	// TODO migrate settings
@@ -548,6 +549,11 @@ func configureEnvironment(cmd *cobra.Command, conf *globalconfig.All) error {
 		err = wrapErrorWithClass(ClassEEBus, configureEEBus(&conf.EEBus))
 	}
 
+	// setup modbus proxy
+	if err == nil {
+		err = wrapErrorWithClass(ClassModbusProxy, configureModbusProxy(&conf.ModbusProxy))
+	}
+
 	// setup javascript VMs
 	if err == nil {
 		err = wrapErrorWithClass(ClassJavascript, configureJavascript(conf.Javascript))
@@ -556,12 +562,6 @@ func configureEnvironment(cmd *cobra.Command, conf *globalconfig.All) error {
 	// setup go VMs
 	if err == nil {
 		err = wrapErrorWithClass(ClassGo, configureGo(conf.Go))
-	}
-
-	// setup config database
-	if err == nil {
-		// TODO decide wrapping
-		err = config.Init(db.Instance)
 	}
 
 	return err
@@ -590,6 +590,10 @@ func configureDatabase(conf globalconfig.DB) error {
 	}
 
 	if err := cache.Init(); err != nil {
+		return err
+	}
+
+	if err := config.Init(); err != nil {
 		return err
 	}
 
@@ -874,16 +878,16 @@ func configureSolarTariff(conf []config.Typed, t *api.Tariff) error {
 }
 
 func configureTariffs(conf *globalconfig.Tariffs) (*tariff.Tariffs, error) {
+	tariffs := tariff.Tariffs{
+		Currency: currency.EUR,
+	}
+
 	// migrate settings
 	if settings.Exists(keys.Tariffs) {
 		*conf = globalconfig.Tariffs{}
 		if err := settings.Yaml(keys.Tariffs, new(map[string]any), &conf); err != nil {
-			return nil, err
+			return &tariffs, err
 		}
-	}
-
-	tariffs := tariff.Tariffs{
-		Currency: currency.EUR,
 	}
 
 	if conf.Currency != "" {
@@ -902,7 +906,7 @@ func configureTariffs(conf *globalconfig.Tariffs) (*tariff.Tariffs, error) {
 	}
 
 	if err := eg.Wait(); err != nil {
-		return nil, &ClassError{ClassTariff, err}
+		return &tariffs, &ClassError{ClassTariff, err}
 	}
 
 	return &tariffs, nil
@@ -1117,13 +1121,13 @@ func configureLoadpoints(conf globalconfig.All) error {
 }
 
 // configureAuth handles routing for devices. For now only api.AuthProvider related routes
-func configureAuth(router *mux.Router) {
-	auth := router.PathPrefix("/oauth").Subrouter()
+func configureAuth(router *mux.Router, paramC chan<- util.Param) {
+	auth := router.PathPrefix("/providerauth").Subrouter()
 	auth.Use(handlers.CompressHandler)
 	auth.Use(handlers.CORS(
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 	))
 
 	// wire the handler
-	oauth2redirect.SetupRouter(auth)
+	providerauth.Setup(auth, paramC)
 }
