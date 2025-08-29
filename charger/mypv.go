@@ -284,8 +284,10 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 	var p float64
 	if binary.BigEndian.Uint16(c) == 1 {
 		p = float64(binary.BigEndian.Uint16(b)) + float64(wb.relaisHeaterPower)
+		wb.log.TRACE.Printf("relais on / relais heater power %d / total power %d W", wb.relaisHeaterPower, p)
 	} else {
 		p = float64(binary.BigEndian.Uint16(b))
+		wb.log.TRACE.Printf("relais off / relais heater power %d / total power %d W", wb.relaisHeaterPower, p)
 	}
 	return p, nil
 }
