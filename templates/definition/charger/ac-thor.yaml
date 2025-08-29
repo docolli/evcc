@@ -24,8 +24,15 @@ params:
     description:
       en: "Scale factor for power limit"
       de: "Skalierungsfaktor der Leistungsvorgabe"
+  - name: relayheaterpower
+    type: float
+    default: 0
+    description:
+      en: "nominal power of heater on relay"
+      de: "Nominale Leistung des Heizstabs am Relais"
 render: |
   type: ac-thor
   {{- include "modbus" . }}
   tempsource: {{ .tempsource }}
   scale: {{ .scale }}
+  relayheaterpower: {{ .relayheaterpower }}

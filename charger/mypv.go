@@ -42,7 +42,7 @@ type MyPv struct {
 	statusC          uint16
 	enabled          bool
 	regTemp          uint16
-	relayHeaterPower uint32
+	relayHeaterPower float64
 }
 
 const (
@@ -57,7 +57,6 @@ const (
 
 var elwaTemp = []uint16{1001, 1030, 1031}
 var elwaStandbyPower uint16 = 10
-var relayHeaterPower uint32 = 0
 
 func init() {
 	// https://github.com/evcc-io/evcc/discussions/12761
@@ -77,7 +76,7 @@ func newMyPvFromConfig(ctx context.Context, name string, other map[string]interf
 		modbus.TcpSettings `mapstructure:",squash"`
 		TempSource         int
 		Scale              float64
-		RelayHeaterPower   uint32
+		RelayHeaterPower   float64
 	}{
 		TcpSettings: modbus.TcpSettings{
 			ID: 1, // default
@@ -95,7 +94,7 @@ func newMyPvFromConfig(ctx context.Context, name string, other map[string]interf
 }
 
 // NewMyPv creates myPV AC Elwa 2 or Thor charger
-func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, relayheaterpower uint32) (api.Charger, error) {
+func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, relayheaterpower float64) (api.Charger, error) {
 	conn, err := modbus.NewConnection(ctx, uri, "", "", 0, modbus.Tcp, slaveID)
 	if err != nil {
 		return nil, err
@@ -119,7 +118,7 @@ func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource in
 		statusC:          statusC,
 		scale:            scale,
 		regTemp:          elwaTemp[tempSource-1],
-		relayHeaterPower: relayHeaterPower,
+		relayHeaterPower: relayheaterpower,
 	}
 
 	go wb.heartbeat(ctx, 30*time.Second)
@@ -283,11 +282,11 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 
 	var p float64
 	if binary.BigEndian.Uint16(c) == 1 {
-		p = float64(binary.BigEndian.Uint16(b)) + float64(wb.relayHeaterPower)
-		wb.log.TRACE.Printf("relay on / relay heater power %d / total power %d W", wb.relayHeaterPower, p)
+		p = float64(binary.BigEndian.Uint16(b)) + wb.relayHeaterPower
+		wb.log.TRACE.Printf("relay on / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
 	} else {
 		p = float64(binary.BigEndian.Uint16(b))
-		wb.log.TRACE.Printf("relay off / relay heater power %d / total power %d W", wb.relayHeaterPower, p)
+		wb.log.TRACE.Printf("relay off / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
 	}
 	return p, nil
 }
