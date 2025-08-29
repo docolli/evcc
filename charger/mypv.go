@@ -33,16 +33,16 @@ import (
 
 // MyPv charger implementation
 type MyPv struct {
-	log               *util.Logger
-	conn              *modbus.Connection
-	lp                loadpoint.API
-	power             uint32
-	scale             float64
-	name              string
-	statusC           uint16
-	enabled           bool
-	regTemp           uint16
-	relaisHeaterPower uint32
+	log              *util.Logger
+	conn             *modbus.Connection
+	lp               loadpoint.API
+	power            uint32
+	scale            float64
+	name             string
+	statusC          uint16
+	enabled          bool
+	regTemp          uint16
+	relayHeaterPower uint32
 }
 
 const (
@@ -52,12 +52,12 @@ const (
 	elwaRegLoadState      = 1059
 	elwaRegPower          = 1000 // https://github.com/evcc-io/evcc/issues/18020#issuecomment-2585300804
 	elwaRegOperationState = 1077
-	elwaRegRelaisState    = 1058
+	elwaRegRelayState     = 1058
 )
 
 var elwaTemp = []uint16{1001, 1030, 1031}
 var elwaStandbyPower uint16 = 10
-var relaisHeaterPower uint32 = 0
+var relayHeaterPower uint32 = 0
 
 func init() {
 	// https://github.com/evcc-io/evcc/discussions/12761
@@ -77,25 +77,25 @@ func newMyPvFromConfig(ctx context.Context, name string, other map[string]interf
 		modbus.TcpSettings `mapstructure:",squash"`
 		TempSource         int
 		Scale              float64
-		RelaisHeaterPower  uint32
+		RelayHeaterPower   uint32
 	}{
 		TcpSettings: modbus.TcpSettings{
 			ID: 1, // default
 		},
-		TempSource:        1,
-		Scale:             1,
-		RelaisHeaterPower: 0,
+		TempSource:       1,
+		Scale:            1,
+		RelayHeaterPower: 0,
 	}
 
 	if err := util.DecodeOther(other, &cc); err != nil {
 		return nil, err
 	}
 
-	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, cc.RelaisHeaterPower)
+	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, cc.RelayHeaterPower)
 }
 
 // NewMyPv creates myPV AC Elwa 2 or Thor charger
-func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, relaisheaterpower uint32) (api.Charger, error) {
+func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, relayheaterpower uint32) (api.Charger, error) {
 	conn, err := modbus.NewConnection(ctx, uri, "", "", 0, modbus.Tcp, slaveID)
 	if err != nil {
 		return nil, err
@@ -113,13 +113,13 @@ func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource in
 	conn.Logger(log.TRACE)
 
 	wb := &MyPv{
-		log:               log,
-		conn:              conn,
-		name:              name,
-		statusC:           statusC,
-		scale:             scale,
-		regTemp:           elwaTemp[tempSource-1],
-		relaisHeaterPower: relaisHeaterPower,
+		log:              log,
+		conn:             conn,
+		name:             name,
+		statusC:          statusC,
+		scale:            scale,
+		regTemp:          elwaTemp[tempSource-1],
+		relayHeaterPower: relayHeaterPower,
 	}
 
 	go wb.heartbeat(ctx, 30*time.Second)
@@ -276,18 +276,18 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 		return 0, err
 	}
 
-	c, err := wb.conn.ReadHoldingRegisters(elwaRegRelaisState, 1)
+	c, err := wb.conn.ReadHoldingRegisters(elwaRegRelayState, 1)
 	if err != nil {
 		return 0, err
 	}
 
 	var p float64
 	if binary.BigEndian.Uint16(c) == 1 {
-		p = float64(binary.BigEndian.Uint16(b)) + float64(wb.relaisHeaterPower)
-		wb.log.TRACE.Printf("relais on / relais heater power %d / total power %d W", wb.relaisHeaterPower, p)
+		p = float64(binary.BigEndian.Uint16(b)) + float64(wb.relayHeaterPower)
+		wb.log.TRACE.Printf("relay on / relay heater power %d / total power %d W", wb.relayHeaterPower, p)
 	} else {
 		p = float64(binary.BigEndian.Uint16(b))
-		wb.log.TRACE.Printf("relais off / relais heater power %d / total power %d W", wb.relaisHeaterPower, p)
+		wb.log.TRACE.Printf("relay off / relay heater power %d / total power %d W", wb.relayHeaterPower, p)
 	}
 	return p, nil
 }
