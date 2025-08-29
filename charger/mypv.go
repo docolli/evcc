@@ -57,6 +57,7 @@ const (
 
 var elwaTemp = []uint16{1001, 1030, 1031}
 var elwaStandbyPower uint16 = 10
+var relaisHeaterPower uint32 = 0
 
 func init() {
 	// https://github.com/evcc-io/evcc/discussions/12761
@@ -71,7 +72,7 @@ func init() {
 }
 
 // newMyPvFromConfig creates a MyPv charger from generic config
-func newMyPvFromConfig(ctx context.Context, name string, other map[string]interface{}, statusC uint16, relaisHeaterPower uint32) (api.Charger, error) {
+func newMyPvFromConfig(ctx context.Context, name string, other map[string]interface{}, statusC uint16) (api.Charger, error) {
 	cc := struct {
 		modbus.TcpSettings `mapstructure:",squash"`
 		TempSource         int
@@ -90,11 +91,11 @@ func newMyPvFromConfig(ctx context.Context, name string, other map[string]interf
 		return nil, err
 	}
 
-	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, relaisHeaterPower)
+	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale)
 }
 
 // NewMyPv creates myPV AC Elwa 2 or Thor charger
-func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, relaisHeaterPower uint32) (api.Charger, error) {
+func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64) (api.Charger, error) {
 	conn, err := modbus.NewConnection(ctx, uri, "", "", 0, modbus.Tcp, slaveID)
 	if err != nil {
 		return nil, err
