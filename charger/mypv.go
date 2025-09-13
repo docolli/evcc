@@ -280,13 +280,61 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 		return 0, err
 	}
 
+	d, err := wb.conn.ReadHoldingRegisters(1082, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1082 %.0f", float64(binary.BigEndian.Uint16(d)))
+
+	e, err := wb.conn.ReadHoldingRegisters(1080, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1080 %.0f", float64(binary.BigEndian.Uint16(e)))
+
+	f, err := wb.conn.ReadHoldingRegisters(1071, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1071 %.0f", float64(binary.BigEndian.Uint16(f)))
+
+	g, err := wb.conn.ReadHoldingRegisters(1014, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1014 %.0f", float64(binary.BigEndian.Uint16(g)))
+
+	h, err := wb.conn.ReadHoldingRegisters(1060, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1060 %.0f", float64(binary.BigEndian.Uint16(h)))
+
+	i, err := wb.conn.ReadHoldingRegisters(1074, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1074 %.0f", float64(binary.BigEndian.Uint16(i)))
+
+	j, err := wb.conn.ReadHoldingRegisters(1075, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1075 %.0f", float64(binary.BigEndian.Uint16(j)))
+
+	k, err := wb.conn.ReadHoldingRegisters(1076, 1)
+	if err != nil {
+		return 0, err
+	}
+	wb.log.DEBUG.Printf("Value Register 1076 %.0f", float64(binary.BigEndian.Uint16(k)))
+
 	var p float64
 	if binary.BigEndian.Uint16(c) == 1 {
 		p = float64(binary.BigEndian.Uint16(b)) + wb.relayHeaterPower
-		wb.log.TRACE.Printf("relay on / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
+		wb.log.DEBUG.Printf("relay on / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
 	} else {
 		p = float64(binary.BigEndian.Uint16(b))
-		wb.log.TRACE.Printf("relay off / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
+		wb.log.DEBUG.Printf("relay off / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
 	}
 	return p, nil
 }
