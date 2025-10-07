@@ -19,6 +19,7 @@
 					<TopNavigation v-bind="topNavigation" />
 				</div>
 			</div>
+			<HemsWarning :circuits="circuits" />
 			<Energyflow v-if="loadpoints.length > 0" v-bind="energyflow" />
 		</div>
 		<div class="d-flex flex-column justify-content-between content-area">
@@ -50,7 +51,7 @@
 			<Loadpoints
 				v-else-if="loadpoints.length > 0"
 				class="mt-1 mt-sm-2 flex-grow-1"
-				:loadpoints="loadpoints"
+				:loadpoints="orderedVisibleLoadpoints"
 				:vehicles="vehicleList"
 				:smartCostType="smartCostType"
 				:smartCostAvailable="smartCostAvailable"
@@ -64,8 +65,8 @@
 				:batteryConfigured="batteryConfigured"
 				:batterySoc="batterySoc"
 				:forecast="forecast"
-				:selectedIndex="selectedLoadpointIndex"
-				@index-changed="selectedLoadpointChanged"
+				:selectedId="selectedLoadpointId"
+				@id-changed="selectedLoadpointChanged"
 			/>
 			<Footer v-bind="footer"></Footer>
 		</div>
@@ -77,6 +78,7 @@ import "@h2d2/shopicons/es/regular/arrowup";
 import Navigation from "../Top/Navigation.vue";
 import Notifications from "../Top/Notifications.vue";
 import Energyflow from "../Energyflow/Energyflow.vue";
+import HemsWarning from "../HemsWarning.vue";
 import Loadpoints from "../Loadpoints/Loadpoints.vue";
 import Footer from "../Footer/Footer.vue";
 import formatter from "@/mixins/formatter";
@@ -88,13 +90,14 @@ import type {
 	Battery,
 	CURRENCY,
 	Forecast,
-	LoadpointCompact,
 	Notification,
+	Circuit,
 	SMART_COST_TYPE,
 	Sponsor,
 	FatalError,
 	EvOpt,
 } from "@/types/evcc";
+import store from "@/store";
 import type { Grid } from "./types";
 
 export default defineComponent({
@@ -103,14 +106,14 @@ export default defineComponent({
 		Loadpoints,
 		Energyflow,
 		Footer,
+		HemsWarning,
 		Notifications,
 		TopNavigation: Navigation,
 		WelcomeIcons,
 	},
 	mixins: [formatter, collector],
 	props: {
-		loadpoints: { type: Array as PropType<LoadpointCompact[]>, default: () => [] },
-		selectedLoadpointIndex: Number,
+		selectedLoadpointId: String,
 
 		notifications: { type: Array as PropType<Notification[]>, default: () => [] },
 		offline: Boolean,
@@ -156,10 +159,17 @@ export default defineComponent({
 		smartFeedInPriorityAvailable: Boolean,
 		fatal: { type: Array as PropType<FatalError[]>, default: () => [] },
 		forecast: Object as PropType<Forecast>,
+		circuits: Object as PropType<Record<string, Circuit>>,
 		telemetry: Boolean,
 		evopt: { type: Object as PropType<EvOpt> },
 	},
 	computed: {
+		loadpoints() {
+			return store.uiLoadpoints.value || [];
+		},
+		orderedVisibleLoadpoints() {
+			return this.loadpoints.filter((lp) => lp.visible);
+		},
 		batteryConfigured() {
 			return this.battery?.length > 0;
 		},
@@ -173,22 +183,7 @@ export default defineComponent({
 			return this.collectProps(Energyflow);
 		},
 		loadpointTitles() {
-			return this.loadpoints.map((lp) => lp.title);
-		},
-		loadpointsCompact() {
-			return this.loadpoints.map((lp, index) => {
-				const vehicleIcon = this.vehicles?.[lp.vehicleName]?.icon;
-				const icon = lp.chargerIcon || vehicleIcon || "car";
-				const title =
-					this.vehicleTitle(lp.vehicleName) ||
-					lp.title ||
-					this.$t("main.loadpoint.fallbackName");
-				const charging = lp.charging;
-				const soc = lp.vehicleSoc;
-				const power = lp.chargePower || 0;
-				const heating = lp.chargerFeatureHeating;
-				return { icon, title, charging, power, soc, heating, index };
-			});
+			return this.orderedVisibleLoadpoints.map((lp) => lp.displayTitle);
 		},
 		vehicleList() {
 			const vehicles = this.vehicles || {};
@@ -230,11 +225,8 @@ export default defineComponent({
 		},
 	},
 	methods: {
-		selectedLoadpointChanged(index: number) {
-			this.$router.push({ query: { lp: index + 1 } });
-		},
-		vehicleTitle(vehicleName: string) {
-			return this.vehicles?.[vehicleName]?.title;
+		selectedLoadpointChanged(id: string | undefined) {
+			this.$router.push({ query: { lp: id } });
 		},
 	},
 });

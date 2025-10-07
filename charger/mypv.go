@@ -2,7 +2,7 @@ package charger
 
 // LICENSE
 
-// Copyright (c) 2024 andig
+// Copyright (c) evcc.io (andig, naltatis, premultiply)
 
 // This module is NOT covered by the MIT license. All rights reserved.
 
@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"slices"
 	"sync/atomic"
 	"time"
 
@@ -67,6 +68,10 @@ func init() {
 	// https: // github.com/evcc-io/evcc/issues/18020
 	registry.AddCtx("ac-thor", func(ctx context.Context, other map[string]interface{}) (api.Charger, error) {
 		return newMyPvFromConfig(ctx, "ac-thor", other, 9)
+	})
+
+	registry.AddCtx("ac-elwa-e", func(ctx context.Context, other map[string]interface{}) (api.Charger, error) {
+		return newMyPvFromConfig(ctx, "ac-elwa-e", other, 2)
 	})
 }
 
@@ -199,19 +204,28 @@ func (wb *MyPv) Status() (api.ChargeStatus, error) {
 
 // Enabled implements the api.Charger interface
 func (wb *MyPv) Enabled() (bool, error) {
-	b, err := wb.conn.ReadHoldingRegisters(elwaRegOperationState, 1)
+	// "ac-thor" and "ac-elwa-2"
+	reg := elwaRegOperationState
+	enabled := []uint16{1, 2} // heating PV excess, boost backup
+
+	if wb.name == "ac-elwa-e" {
+		reg = elwaERegOperationState
+		enabled = []uint16{2, 4} // heating PV excess, boost backup
+	}
+
+	// register read
+	b, err := wb.conn.ReadHoldingRegisters(uint16(reg), 1)
 	if err != nil {
 		return false, err
 	}
+	state := binary.BigEndian.Uint16(b)
 
-	switch binary.BigEndian.Uint16(b) {
-	case
-		1, // heating PV excess
-		2: // boost backup
-		return true, nil
-	case
-		0: // standby
+	// determine enabled state
+	if state == 0 { // standby
 		return false, nil
+	}
+	if slices.Contains(enabled, state) {
+		return true, nil
 	}
 
 	// fallback to cached value as last resort
