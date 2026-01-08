@@ -47,13 +47,17 @@ type MyPv struct {
 }
 
 const (
-	elwaRegSetPower       = 1000
-	elwaRegTempLimit      = 1002
-	elwaRegStatus         = 1003
-	elwaRegLoadState      = 1059
-	elwaRegPower          = 1000 // https://github.com/evcc-io/evcc/issues/18020#issuecomment-2585300804
-	elwaRegOperationState = 1077
-	elwaRegRelayState     = 1058
+	elwaRegSetPower           = 1000
+	elwaRegTempLimit          = 1002
+	elwaRegStatus             = 1003
+	elwaRegLoadState          = 1059
+	elwaRegPower              = 1000 // https://github.com/evcc-io/evcc/issues/18020#issuecomment-2585300804
+	elwaRegOperationState     = 1077
+	elwaERegOperationState    = elwaRegStatus // same register for elwa-e operation state
+	elwaRegRelayState         = 1058
+	elwaRegOperationMode      = 1065 // https://github.com/evcc-io/evcc/discussions/23708
+	elwaRegMaxControlledPower = 1014 // max. power for granular controlled output
+	elwaRegMaxCombinedPower   = 1071 // max. power for granular controlled output + (configured relais power * 1.1)
 )
 
 var elwaTemp = []uint16{1001, 1030, 1031}
@@ -294,61 +298,44 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 		return 0, err
 	}
 
-	d, err := wb.conn.ReadHoldingRegisters(1082, 1)
+	f, err := wb.conn.ReadHoldingRegisters(elwaRegOperationMode, 1)
 	if err != nil {
 		return 0, err
 	}
-	wb.log.DEBUG.Printf("Value Register 1082 %.0f", float64(binary.BigEndian.Uint16(d)))
-
-	e, err := wb.conn.ReadHoldingRegisters(1080, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1080 %.0f", float64(binary.BigEndian.Uint16(e)))
-
-	f, err := wb.conn.ReadHoldingRegisters(1071, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1071 %.0f", float64(binary.BigEndian.Uint16(f)))
-
-	g, err := wb.conn.ReadHoldingRegisters(1014, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1014 %.0f", float64(binary.BigEndian.Uint16(g)))
-
-	h, err := wb.conn.ReadHoldingRegisters(1060, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1060 %.0f", float64(binary.BigEndian.Uint16(h)))
-
-	i, err := wb.conn.ReadHoldingRegisters(1074, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1074 %.0f", float64(binary.BigEndian.Uint16(i)))
-
-	j, err := wb.conn.ReadHoldingRegisters(1075, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1075 %.0f", float64(binary.BigEndian.Uint16(j)))
-
-	k, err := wb.conn.ReadHoldingRegisters(1076, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Value Register 1076 %.0f", float64(binary.BigEndian.Uint16(k)))
+	wb.log.DEBUG.Printf("Operation Mode %.0f", float64(binary.BigEndian.Uint16(f)))
 
 	var p float64
-	if binary.BigEndian.Uint16(c) == 1 {
-		p = float64(binary.BigEndian.Uint16(b)) + wb.relayHeaterPower
-		wb.log.DEBUG.Printf("relay on / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
+
+	if binary.BigEndian.Uint16(f) == 3 {
+		d, err := wb.conn.ReadHoldingRegisters(elwaRegMaxControlledPower, 1)
+		if err != nil {
+			return 0, err
+		}
+
+		e, err := wb.conn.ReadHoldingRegisters(elwaRegMaxCombinedPower, 1)
+		if err != nil {
+			return 0, err
+		}
+		wb.log.DEBUG.Printf("Max. power controlled %.0f W / combined %.0f W", float64(binary.BigEndian.Uint16(d)), float64(binary.BigEndian.Uint16(e)))
+
+		// relay power = combined power - controlled power, corrected with 110%
+		var rp float64 = float64((binary.BigEndian.Uint16(e) - binary.BigEndian.Uint16(d))) / float64(1.1)
+
+		// must be corrected with scale factor !
+		if wb.scale != 0 {
+			rp = rp / wb.scale
+		}
+		wb.log.DEBUG.Printf("Calculated Power on Relay %.0f W, corrected %.0f W", float64(binary.BigEndian.Uint16(e)-binary.BigEndian.Uint16(d)), rp)
+
+		if binary.BigEndian.Uint16(c) == 1 {
+			p = float64(binary.BigEndian.Uint16(b)) + rp
+			wb.log.DEBUG.Printf("relay on / relay heater power %.0f W / total power %.0f W", rp, p)
+		} else {
+			p = float64(binary.BigEndian.Uint16(b))
+			wb.log.DEBUG.Printf("relay off / relay heater power %.0f W / total power %.0f W", rp, p)
+		}
 	} else {
 		p = float64(binary.BigEndian.Uint16(b))
-		wb.log.DEBUG.Printf("relay off / relay heater power %.0f W / total power %.0f W", wb.relayHeaterPower, p)
 	}
 	return p, nil
 }
