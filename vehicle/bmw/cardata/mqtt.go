@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/eclipse/paho.mqtt.golang/packets"
 	"github.com/evcc-io/evcc/util"
-	"github.com/golang-jwt/jwt/v5"
 	"golang.org/x/oauth2"
 )
 
@@ -40,7 +40,9 @@ func NewMqttConnector(ctx context.Context, log *util.Logger, clientID string, ts
 		subscriptions: make(map[string]chan StreamingMessage),
 	}
 
-	go v.run(ctx, ts)
+	if !testing.Testing() {
+		go v.run(ctx, ts)
+	}
 
 	mqttConnections[clientID] = v
 
@@ -57,8 +59,18 @@ func (v *MqttConnector) Subscribe(vin string) <-chan StreamingMessage {
 	return ch
 }
 
+func (v *MqttConnector) Unsubscribe(vin string) {
+	v.mu.Lock()
+	defer v.mu.Unlock()
+
+	if ch, ok := v.subscriptions[vin]; ok {
+		delete(v.subscriptions, vin)
+		close(ch)
+	}
+}
+
 func (v *MqttConnector) run(ctx context.Context, ts oauth2.TokenSource) {
-	bo := backoff.NewExponentialBackOff(backoff.WithMaxInterval(time.Minute))
+	bo := backoff.NewExponentialBackOff(backoff.WithInitialInterval(time.Second), backoff.WithMaxInterval(time.Minute), backoff.WithMaxElapsedTime(0))
 
 	for ctx.Err() == nil {
 		time.Sleep(bo.NextBackOff())
@@ -76,7 +88,7 @@ func (v *MqttConnector) run(ctx context.Context, ts oauth2.TokenSource) {
 			v.log.ERROR.Println(err)
 
 			// don't reset backoff
-			if errors.Is(err, packets.ErrorRefusedBadUsernameOrPassword) {
+			if errors.Is(err, packets.ErrorRefusedBadUsernameOrPassword) || errors.Is(err, packets.ErrorRefusedNotAuthorised) {
 				continue
 			}
 		}
@@ -89,14 +101,7 @@ func (v *MqttConnector) runMqtt(ctx context.Context, token *oauth2.Token) error 
 	gcid := TokenExtra(token, "gcid")
 	idToken := TokenExtra(token, "id_token")
 
-	var claims jwt.RegisteredClaims
-	parsed, err := jwt.ParseWithClaims(idToken, &claims, nil)
-	if err != nil && !errors.Is(err, jwt.ErrTokenUnverifiable) {
-		return fmt.Errorf("get %w for %s", err, idToken)
-	}
-	idExpiry, _ := parsed.Claims.GetExpirationTime()
-
-	v.log.DEBUG.Printf("connect streaming (using gcid %s/ id_token %s, IDT valid: %v, AT valid: %v)", gcid, idToken, idExpiry.Round(time.Second), token.Expiry.Round(time.Second))
+	v.log.DEBUG.Printf("connect streaming (using gcid %s, id_token %s, valid: %v)", gcid, idToken, token.Expiry.Round(time.Second))
 
 	paho := mqtt.NewClient(
 		mqtt.NewClientOptions().
@@ -113,13 +118,15 @@ func (v *MqttConnector) runMqtt(ctx context.Context, token *oauth2.Token) error 
 	}
 	defer paho.Disconnect(1000)
 
-	topic := fmt.Sprintf("%s/#", gcid)
+	topic := fmt.Sprintf("%s/+", gcid)
 
 	if t := paho.Subscribe(topic, 0, v.handler); !t.WaitTimeout(timeout) {
 		return errors.New("subcribe timeout")
 	} else if err := t.Error(); err != nil {
 		return fmt.Errorf("subscribe: %w", err)
 	}
+
+	v.log.DEBUG.Println("connected streaming")
 
 	ctx, cancel := context.WithDeadline(ctx, token.Expiry)
 	defer cancel()
@@ -129,7 +136,7 @@ func (v *MqttConnector) runMqtt(ctx context.Context, token *oauth2.Token) error 
 	return nil
 }
 
-func (v *MqttConnector) handler(c mqtt.Client, m mqtt.Message) {
+func (v *MqttConnector) handler(_ mqtt.Client, m mqtt.Message) {
 	var res StreamingMessage
 	if err := json.Unmarshal(m.Payload(), &res); err != nil {
 		v.log.ERROR.Println(m.Topic(), string(m.Payload()), err)
