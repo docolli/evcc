@@ -34,16 +34,15 @@ import (
 
 // MyPv charger implementation
 type MyPv struct {
-	log              *util.Logger
-	conn             *modbus.Connection
-	lp               loadpoint.API
-	power            uint32
-	scale            float64
-	name             string
-	statusC          uint16
-	enabled          bool
-	regTemp          uint16
-	relayHeaterPower float64
+	log     *util.Logger
+	conn    *modbus.Connection
+	lp      loadpoint.API
+	power   uint32
+	scale   float64
+	name    string
+	statusC uint16
+	enabled bool
+	regTemp uint16
 }
 
 const (
@@ -56,8 +55,8 @@ const (
 	elwaERegOperationState    = elwaRegStatus // same register for elwa-e operation state
 	elwaRegRelayState         = 1058
 	elwaRegOperationMode      = 1065 // https://github.com/evcc-io/evcc/discussions/23708
-	elwaRegMaxControlledPower = 1014 // max. power for granular controlled output
-	elwaRegMaxCombinedPower   = 1071 // max. power for granular controlled output + (configured relais power * 1.1)
+	elwaRegMaxControlledPower = 1014 // max. power for linear controlled output
+	elwaRegMaxCombinedPower   = 1071 // (max. power for linear controlled output + configured relais power) * 1.10
 )
 
 var elwaTemp = []uint16{1001, 1030, 1031}
@@ -85,25 +84,23 @@ func newMyPvFromConfig(ctx context.Context, name string, other map[string]any, s
 		modbus.TcpSettings `mapstructure:",squash"`
 		TempSource         int
 		Scale              float64
-		RelayHeaterPower   float64
 	}{
 		TcpSettings: modbus.TcpSettings{
 			ID: 1, // default
 		},
-		TempSource:       1,
-		Scale:            1,
-		RelayHeaterPower: 0,
+		TempSource: 1,
+		Scale:      1,
 	}
 
 	if err := util.DecodeOther(other, &cc); err != nil {
 		return nil, err
 	}
 
-	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, cc.RelayHeaterPower)
+	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale)
 }
 
 // NewMyPv creates myPV AC Elwa 2 or Thor charger
-func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, relayheaterpower float64) (api.Charger, error) {
+func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64) (api.Charger, error) {
 	conn, err := modbus.NewConnection(ctx, uri, "", "", 0, modbus.Tcp, slaveID)
 	if err != nil {
 		return nil, err
@@ -121,13 +118,12 @@ func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource in
 	conn.Logger(log.TRACE)
 
 	wb := &MyPv{
-		log:              log,
-		conn:             conn,
-		name:             name,
-		statusC:          statusC,
-		scale:            scale,
-		regTemp:          elwaTemp[tempSource-1],
-		relayHeaterPower: relayheaterpower,
+		log:     log,
+		conn:    conn,
+		name:    name,
+		statusC: statusC,
+		scale:   scale,
+		regTemp: elwaTemp[tempSource-1],
 	}
 
 	go wb.heartbeat(ctx, 30*time.Second)
@@ -293,50 +289,59 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 		return 0, err
 	}
 
-	c, err := wb.conn.ReadHoldingRegisters(elwaRegRelayState, 1)
-	if err != nil {
-		return 0, err
-	}
-
-	f, err := wb.conn.ReadHoldingRegisters(elwaRegOperationMode, 1)
-	if err != nil {
-		return 0, err
-	}
-	wb.log.DEBUG.Printf("Operation Mode %.0f", float64(binary.BigEndian.Uint16(f)))
-
 	var p float64
+	p = float64(binary.BigEndian.Uint16(b))
 
-	if binary.BigEndian.Uint16(f) == 3 {
-		d, err := wb.conn.ReadHoldingRegisters(elwaRegMaxControlledPower, 1)
+	// Added for "warm water 9 + 9kW" operation mode (#3) of AC Thor with extra heater on internal relay
+	// see https://github.com/evcc-io/evcc/discussions/23708
+	if wb.name == "ac-thor" {
+
+		c, err := wb.conn.ReadHoldingRegisters(elwaRegOperationMode, 1)
 		if err != nil {
 			return 0, err
 		}
+		wb.log.DEBUG.Printf("operation mode %.0f", float64(binary.BigEndian.Uint16(c)))
 
-		e, err := wb.conn.ReadHoldingRegisters(elwaRegMaxCombinedPower, 1)
-		if err != nil {
-			return 0, err
+		if binary.BigEndian.Uint16(c) == 3 {
+			// get power of heater on relay as set in web interface
+			// (scale factor must be used for correct setting in web interface)
+			d, err := wb.conn.ReadHoldingRegisters(elwaRegMaxControlledPower, 1)
+			if err != nil {
+				return 0, err
+			}
+
+			e, err := wb.conn.ReadHoldingRegisters(elwaRegMaxCombinedPower, 1)
+			if err != nil {
+				return 0, err
+			}
+			wb.log.DEBUG.Printf("max. power: controlled %.0f W / combined %.0f W", float64(binary.BigEndian.Uint16(d)), float64(binary.BigEndian.Uint16(e)))
+
+			// relay power = combined power - controlled power, finally corrected with 110% factor
+			var rp float64 = float64((binary.BigEndian.Uint16(e) - binary.BigEndian.Uint16(d))) / float64(1.1)
+
+			// relay power value from AC Thor must be calculated back with scale factor
+			if wb.scale != 0 {
+				rp = rp / wb.scale
+			} else {
+				rp = 0
+			}
+			wb.log.DEBUG.Printf("power on relay: register difference %.0f W / corrected %.0f W", float64(binary.BigEndian.Uint16(e)-binary.BigEndian.Uint16(d)), rp)
+
+			f, err := wb.conn.ReadHoldingRegisters(elwaRegRelayState, 1)
+			if err != nil {
+				return 0, err
+			}
+
+			if binary.BigEndian.Uint16(f) == 1 {
+				p = float64(binary.BigEndian.Uint16(b)) + rp
+				wb.log.DEBUG.Printf("relay on / relay heater power %.0f W / total power %.0f W", rp, p)
+			} else {
+				p = float64(binary.BigEndian.Uint16(b))
+				wb.log.DEBUG.Printf("relay off / relay heater power %.0f W / total power %.0f W", rp, p)
+			}
 		}
-		wb.log.DEBUG.Printf("Max. power controlled %.0f W / combined %.0f W", float64(binary.BigEndian.Uint16(d)), float64(binary.BigEndian.Uint16(e)))
-
-		// relay power = combined power - controlled power, corrected with 110%
-		var rp float64 = float64((binary.BigEndian.Uint16(e) - binary.BigEndian.Uint16(d))) / float64(1.1)
-
-		// must be corrected with scale factor !
-		if wb.scale != 0 {
-			rp = rp / wb.scale
-		}
-		wb.log.DEBUG.Printf("Calculated Power on Relay %.0f W, corrected %.0f W", float64(binary.BigEndian.Uint16(e)-binary.BigEndian.Uint16(d)), rp)
-
-		if binary.BigEndian.Uint16(c) == 1 {
-			p = float64(binary.BigEndian.Uint16(b)) + rp
-			wb.log.DEBUG.Printf("relay on / relay heater power %.0f W / total power %.0f W", rp, p)
-		} else {
-			p = float64(binary.BigEndian.Uint16(b))
-			wb.log.DEBUG.Printf("relay off / relay heater power %.0f W / total power %.0f W", rp, p)
-		}
-	} else {
-		p = float64(binary.BigEndian.Uint16(b))
 	}
+
 	return p, nil
 }
 
