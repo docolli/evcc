@@ -128,18 +128,20 @@
       "dimmed": "Gedimmt",
       "enabled": "Ladebereit",
       "energy": "Energie",
+      "events": "Ereignisse",
       "feedinPrice": "Einspeisevergütung",
       "gridPrice": "Netzpreis",
       "heaterTempLimit": "Heizungslimit",
       "hemsActiveLimit": "Aktives Limit",
       "hemsType": "Kommunikation",
       "identifier": "RFID-Kennung",
+      "messengers": "Dienste",
       "no": "Nein",
       "odometer": "Kilometerstand",
       "org": "Organisation",
-      "phaseCurrents": "Strom L1, L2, L3",
-      "phasePowers": "Leistung L1, L2, L3",
-      "phaseVoltages": "Spannung L1, L2, L3",
+      "phaseCurrents": "Strom",
+      "phasePowers": "Leistung",
+      "phaseVoltages": "Spannung",
       "phases1p3p": "Phasenumschaltung",
       "power": "Leistung",
       "powerRange": "Leistung",
@@ -172,11 +174,27 @@
       "loading": "Lade YAML-Editor …"
     },
     "eebus": {
-      "description": "Grundkonfiguration für die Kommunikation mit anderen EEBus-Geräten.",
+      "certificate": {
+        "private": "Privater Schlüssel",
+        "public": "Öffentliches Zertifikat",
+        "title": "Zertifikate"
+      },
+      "description": "Konfiguration zur Kommunikation mit EEBus-kompatiblen Geräten wie Wallboxen oder dem Steuergerät des Netzbetreibers. Alle notwendigen Initialisierungen und die Zertifikatsgenerierung erfolgen automatisch beim ersten Start.",
+      "descriptionAdvanced": "Keine Änderungen erforderlich. Bei Änderung ist Neukoppelung aller Geräte erforderlich.",
+      "interfaces": "Schnittstellen",
+      "interfacesHelp": "Begrenzt die Netzwerkschnittstellen, die EEBus nutzen soll, um Kommunikationsprobleme zu vermeiden. Feld leer lassen, um alle Schnittstellen zu verwenden. Ein Eintrag pro Zeile.",
+      "port": "Port",
+      "portHelp": "Der zu verwendende Port.",
+      "removeConfirm": "Die gesamte EEBus-Konfiguration wird entfernt. Neue Zertifikate und Kennungen werden beim nächsten Start generiert. Bist du sicher?",
+      "shipid": "SHIP-ID",
+      "shipidExplain": "Permanente Gerätekennung zur Identifikation im EEBus-Netzwerk.",
+      "shipidHelp": "Diese SHIP-ID ist mit den unten stehenden Zertifikaten verknüpft.",
+      "ski": "SKI",
+      "skiExplain": "Eindeutige Sicherheitskennung zum Koppeln von EEBus-Geräten.",
       "title": "EEBus"
     },
     "experimental": {
-      "description": "Aktiviert die Benutzeroberfläche für Funktionen, die sich noch in der Testphase befinden und sich in zukünftigen Versionen ändern können.",
+      "description": "Bietet frühzeitigen Zugriff auf Funktionen, die sich noch in der Testphase befinden. Diese können instabil sein und in zukünftigen Versionen geändert oder entfernt werden.",
       "title": "Experimentell"
     },
     "ext": {
@@ -198,6 +216,7 @@
       "cancel": "Abbrechen",
       "clear": "Löschen",
       "close": "Schließen",
+      "confirmSave": "Es gibt ungespeicherte Änderungen. Jetzt speichern?",
       "copied": "Kopiert!",
       "copy": "Kopieren",
       "customHelp": "Erstelle ein benutzerdefiniertes Gerät mit evcc's Plugin-System.",
@@ -207,10 +226,13 @@
       "dragHandle": "Verschieben",
       "dragItem": "Verschiebbar: {title}",
       "dragList": "Sortierbare Liste",
+      "error": "Fehler",
       "experimental": "Experimentell",
       "forceSave": "Trotzdem speichern",
+      "fromYamlHint": "Hinweis: Konfiguriert über evcc.yaml. Entferne den Eintrag aus der Datei, um die Bearbeitung hier zu aktivieren.",
       "hideAdvancedSettings": "Erweiterte Einstellungen ausblenden",
       "invalidFileSelected": "Ungültige Datei ausgewählt",
+      "legacy": "veraltet",
       "noFileSelected": "Keine Datei ausgewählt.",
       "off": "aus",
       "on": "an",
@@ -243,12 +265,11 @@
         "limitpower": "Limit (kW)",
         "type": "Typ"
       },
-      "description": "Leistungsbegrenzung durch externe Systeme (bspw. Steuerboxen, § 14a EnWG). Setzt Lastmanagementkonfiguration voraus.",
+      "description": "Leistungsbegrenzung durch externe Systeme (z.B. §14a EnWG, §9 EEG Schnittstelle oder übergeordnetes Energiemanagementsystem). Spielt mit dem Lastmanagement Feature zusammen.",
       "downloadCsv": "CSV herunterladen",
       "eventsRecorded": "{count} Netzbegrenzungen gespeichert.",
       "lastEvent": "Zuletzt {timeAgo}.",
-      "title": "HEMS",
-      "yamlConfigured": "Hinweis: Konfiguriert über evcc.yaml. Entferne den Eintrag aus der Datei, um die Bearbeitung hier zu aktivieren."
+      "title": "Externe Begrenzung"
     },
     "icon": {
       "change": "ändern",
@@ -294,6 +315,7 @@
       "chargerTypeLabel": "Ladetyp",
       "chargingTitle": "Verhalten",
       "circuitHelp": "Lastmanagement-Zuordnung, um die Leistungs- und Stromgrenzen nicht zu überschreiten.",
+      "circuitInvalid": "Stromkreis existiert nicht",
       "circuitLabel": "Stromkreis",
       "circuitUnassigned": "nicht zugewiesen",
       "defaultModeHelp": {
@@ -370,6 +392,7 @@
       "vehicleAutoDetection": "automatische Erkennung",
       "vehicleHelpAutoDetection": "Wählt automatisch das plausibelste Fahrzeug aus. Manuelle Übersteuerung möglich.",
       "vehicleHelpDefault": "Nimmt immer an, dass dieses Fahrzeug hier lädt. Auto-Erkennung deaktiviert. Manuelle Übersteuerung möglich.",
+      "vehicleInvalid": "Fahrzeug existiert nicht",
       "vehicleLabel": "Standard-Fahrzeug",
       "vehiclesTitle": "Fahrzeuge"
     },
@@ -388,12 +411,68 @@
       "unconfigured": "nicht konfiguriert",
       "vehicles": "Meine Fahrzeuge",
       "welcomeBannerText": "Lege zunächst eine **Wallbox**, **Heizung**, **Netzzähler**, **Solar**, **Batterie** oder **zusätzlichen Zähler** an. Falls du nur testen möchtest, wähle ein **Demogerät**.",
-      "welcomeBannerTitle": "Los geht's mit der Konfiguration!",
-      "yaml": "Geräte aus evcc.yaml sind nicht editierbar."
+      "welcomeBannerTitle": "Los geht's mit der Konfiguration!"
     },
     "messaging": {
+      "addMessenger": "Dienst hinzufügen",
       "description": "Benachrichtigungen über Ladevorgänge und andere Ereignisse erhalten.",
+      "event": {
+        "asleep": {
+          "messageDefault": "Ladefreigabe, Fahrzeug {vehicleName} lädt nicht.",
+          "title": "Wenn Fahrzeug nicht lädt",
+          "titleDefault": "Fahrzeug schläft"
+        },
+        "connect": {
+          "messageDefault": "Auto verbunden bei {pvPower}kW PV",
+          "title": "Wenn ein Auto verbunden wird",
+          "titleDefault": "Auto verbunden"
+        },
+        "disconnect": {
+          "messageDefault": "Auto getrennt nach {connectedDuration}",
+          "title": "Wenn ein Auto getrennt wird",
+          "titleDefault": "Auto getrennt"
+        },
+        "guest": {
+          "messageDefault": "Unbekanntes Fahrzeug, Gast verbunden?",
+          "title": "Wenn ein unbekanntes Auto verbunden wird",
+          "titleDefault": "Unbekanntes Fahrzeug"
+        },
+        "planoverrun": {
+          "messageDefault": "{vehicleTitle}: Plan wird überschritten.",
+          "title": "Wenn das geplante Laden überschritten wird",
+          "titleDefault": "Plan überschritten"
+        },
+        "soc": {
+          "messageDefault": "Batterie geladen auf {vehicleSoc}%",
+          "title": "Ladestandsaktualisierung",
+          "titleDefault": "Ladestand aktualisiert"
+        },
+        "start": {
+          "messageDefault": "Laden im {mode}-Modus gestartet.",
+          "title": "Wenn das Laden startet",
+          "titleDefault": "Ladevorgang gestartet"
+        },
+        "stop": {
+          "messageDefault": "Laden beendet: {chargedEnergy}kWh in {chargeDuration}.",
+          "title": "Wenn das Laden stoppt",
+          "titleDefault": "Ladevorgang beendet"
+        }
+      },
+      "eventMessage": "Nachricht",
+      "eventTitle": "Titel",
+      "events": "Ereignisse",
+      "legacyWarning": "Neue Benachrichtigungskonfiguration verfügbar! Entferne und speichere deine Konfiguration hier, um den neuen geführten Prozess zu verwenden.",
+      "messengers": "Dienste",
+      "seePlaceholders": "siehe Platzhalter",
       "title": "Benachrichtigungen"
+    },
+    "messenger": {
+      "custom": "Benutzerdefinierter Dienst",
+      "generic": "Generischer Dienst",
+      "primary": "Spezifischer Dienst",
+      "template": "Dienst",
+      "titleAdd": "Dienst hinzufügen",
+      "titleEdit": "Dienst bearbeiten"
     },
     "meter": {
       "cancel": "Abbrechen",
@@ -472,7 +551,7 @@
       "labelClientCert": "Clientzertifikat",
       "labelClientId": "Client ID",
       "labelClientKey": "Client-Key",
-      "labelInsecure": "Zertifikatüberprüfung",
+      "labelInsecure": "Zertifikatsüberprüfung",
       "labelPassword": "Passwort",
       "labelTopic": "Thema",
       "labelUser": "Benutzer",
@@ -541,6 +620,7 @@
       "integrations": "Integrationen",
       "loadpoints": "Laden & Heizen",
       "meter": "PV & Batterie",
+      "services": "Dienste",
       "system": "System",
       "vehicles": "Fahrzeuge"
     },
@@ -630,7 +710,7 @@
     "validation": {
       "failed": "fehlgeschlagen",
       "label": "Status",
-      "running": "Prüfe …",
+      "running": "prüfe …",
       "success": "erfolgreich",
       "unknown": "unbekannt",
       "validate": "prüfen"
@@ -737,12 +817,14 @@
   "forecast": {
     "co2": {
       "average": "Durchschnitt",
+      "constant": "CO₂-Intensität",
       "lowestHour": "Sauberste Stunde",
       "range": "Bereich"
     },
     "modalTitle": "Vorhersage",
     "price": {
       "average": "Durchschnitt",
+      "constant": "Preis",
       "lowestHour": "Günstigste Stunde",
       "range": "Bereich"
     },
@@ -940,6 +1022,7 @@
       "charged": "Geladen",
       "co2": "⌀ CO₂",
       "duration": "Ladedauer",
+      "emission": "Emission",
       "fallbackName": "Ladepunkt",
       "finished": "Ladeende",
       "power": "Leistung",
@@ -951,10 +1034,15 @@
     },
     "loadpointSettings": {
       "batteryBoost": {
-        "description": "Schnell aus Hausbatterie laden.",
+        "description": "Schnellladen aus der Hausbatterie erlauben, bis sie auf {limit} entladen ist.",
+        "descriptionDisabled": "Limit wählen, um Schnellladen aus der Hausbatterie zu erlauben.",
+        "disabled": "Deaktiviert",
         "label": "Batterie Boost",
         "mode": "Nur im PV- und Min+PV-Modus verfügbar.",
-        "once": "Boost ist für diesen Ladevorgang aktiviert."
+        "once": "Boost ist für diesen Ladevorgang aktiviert.",
+        "stateActive": "Batterie Boost aktiv",
+        "stateBelowLimit": "Batterie zu niedrig für Boost",
+        "stateReady": "Batterie Boost bereit"
       },
       "batteryUsage": "Hausbatterie",
       "currents": "Ladestrom",
@@ -1060,6 +1148,9 @@
     "vehicleStatus": {
       "awaitingAuthorization": "Warte auf Autorisierung.",
       "batteryBoost": "Batterie Boost aktiv.",
+      "batteryBoostBelowLimit": "Batterie zu niedrig für Boost.",
+      "batteryBoostDisabled": "Batterie Boost deaktiviert.",
+      "batteryBoostEnabled": "Boost bis Batterie bei {limit}.",
       "charging": "Ladevorgang aktiv …",
       "cheapEnergyCharging": "Günstige Energie verfügbar.",
       "cheapEnergyNextStart": "Günstige Energie in {duration}.",
@@ -1106,7 +1197,6 @@
   "passwordModal": {
     "description": "Setze ein Passwort, um die Konfiguration zu schützen. Die Hauptansicht bleibt ohne Login zugänglich.",
     "empty": "Passwort darf nicht leer sein",
-    "error": "Fehler: ",
     "labelCurrent": "Aktuelles Passwort",
     "labelNew": "Neues Passwort",
     "labelRepeat": "Neues Passwort wiederholen",
@@ -1220,7 +1310,7 @@
     },
     "hiddenFeatures": {
       "label": "Experimentell",
-      "value": "Experimentelle Funktionen anzeigen."
+      "value": "Experimentelle Funktionen aktivieren."
     },
     "language": {
       "auto": "Automatisch",

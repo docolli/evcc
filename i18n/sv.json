@@ -70,7 +70,7 @@
       "ocppStep2": "Vänta, din laddare ansluter till evcc.",
       "ocppStep3": "Fortsätt och slutför konfigurationen.",
       "ocppWaiting": "Väntar på anslutning",
-      "switchsockets": "Smarta hem utrustning",
+      "switchsockets": "Fjärrströmbrytare",
       "template": "Tillverkare",
       "titleAdd": {
         "charging": "Lägg till laddare",
@@ -137,9 +137,9 @@
       "no": "nej",
       "odometer": "Mätarställning",
       "org": "Organisation",
-      "phaseCurrents": "Ström L1, L2, L3",
-      "phasePowers": "Effekt L1, L2, L3",
-      "phaseVoltages": "Spänning L1, L2, L3",
+      "phaseCurrents": "Ström",
+      "phasePowers": "Effekt",
+      "phaseVoltages": "Spänning",
       "phases1p3p": "Fasväxlare",
       "power": "Effekt",
       "powerRange": "Kraft",
@@ -172,11 +172,27 @@
       "loading": "Öppnar Yaml-editorn…"
     },
     "eebus": {
-      "description": "Inställning som tillåter evcc att kommunicera med andra EEBus-enheter.",
+      "certificate": {
+        "private": "Privat nyckel",
+        "public": "Publikt certifikat",
+        "title": "Certifikat"
+      },
+      "description": "Inställning som tillåter evcc att kommunicera med EEBus-kompatibla enheter som laddare eller kontrollenheter från din nätoperatör. Initiering och generering av certifikat sker vid första uppstart.",
+      "descriptionAdvanced": "Inga ändringar behövs. Gör enbart ändringar om du är säker på vad du gör. Om du ändrar SHIP-id eller certifikat så måste enheterna paras igen.",
+      "interfaces": "Gränssnitt",
+      "interfacesHelp": "Begränsa nätverkets gränssnitt som EEBus kan använda för att undvika kommunikationsproblem. Lämna blankt för att använda alla gränssnitt. Ett inlägg per rad.",
+      "port": "Port",
+      "portHelp": "Port som ska användas.",
+      "removeConfirm": "All EEBus konfiguration kommer raderas. Nya certifikat och id kommer att genereras vid nästa start. Är du säker?",
+      "shipid": "SHIP-ID",
+      "shipidExplain": "Permanent enhets-id för identifiering i EEBus-nätverket.",
+      "shipidHelp": "Detta SHIP-ID är länkat till certifikatet nedan.",
+      "ski": "SKI",
+      "skiExplain": "Unikt säkerhets-id för att para EEBus-enheter.",
       "title": "EEBus"
     },
     "experimental": {
-      "description": "Aktivera användargränssnittet för funktioner som fortfarande testas och kan komma att ändras i framtida versioner.",
+      "description": "Ger tillgång till funktioner som fortfarande testas. De kan kan vara instabila och komma att ändras eller tas bort i framtida versioner.",
       "title": "Experimentell"
     },
     "ext": {
@@ -207,8 +223,10 @@
       "dragHandle": "Senarelägga",
       "dragItem": "Går att senarelägga: {title}",
       "dragList": "Sorterbar lista",
+      "error": "Fel",
       "experimental": "Experimentella funktioner",
       "forceSave": "Spara ändå",
+      "fromYamlHint": "Obs: Konfigurerad via evcc.yaml. Ta bort posten från filen för att aktivera redigering här.",
       "hideAdvancedSettings": "Dölj avancerade inställningar",
       "invalidFileSelected": "Ogiltig fil vald",
       "noFileSelected": "Ingen fil vald.",
@@ -243,12 +261,11 @@
         "limitpower": "Begränsning (kW)",
         "type": "Typ"
       },
-      "description": "Effektbegränsning mha externt system (tex. §14a EnWG styrbox). Fordrar lasthanteringskonfiguration.",
+      "description": "Effektbegränsning genom externa system (t.ex. §14a EnWG, §9 EEG-gränssnitt eller överordnat energihanteringssystem). Fungerar tillsammans med lasthanteringsfunktionen.",
       "downloadCsv": "Hämta CSV",
       "eventsRecorded": "Registrerade {count} händelser med nätbegränsning.",
       "lastEvent": "Senaste {timeAgo}.",
-      "title": "HEMS",
-      "yamlConfigured": "Obs: Konfigurerad via evcc.yaml. Ta bort posten från filen för att aktivera redigering här."
+      "title": "Extern gräns"
     },
     "icon": {
       "change": "ändra",
@@ -294,6 +311,7 @@
       "chargerTypeLabel": "Typ av laddare",
       "chargingTitle": "Tillstånd",
       "circuitHelp": "Belastningsstyrning som säkrar att effekt och strömgränser ej överskrids.",
+      "circuitInvalid": "Kretsen saknas",
       "circuitLabel": "Krets",
       "circuitUnassigned": "ej vald",
       "defaultModeHelp": {
@@ -370,6 +388,7 @@
       "vehicleAutoDetection": "automatisk detektering",
       "vehicleHelpAutoDetection": "Väljer automatiskt det mest troliga fordonet. Manuell inställning är möjlig.",
       "vehicleHelpDefault": "Anta att detta fordon alltid laddar här. Automatisk detektering är avstängt. Manuell inställning är möjlig.",
+      "vehicleInvalid": "Fordon saknas",
       "vehicleLabel": "Standard fordon",
       "vehiclesTitle": "Fordon"
     },
@@ -387,9 +406,8 @@
       "title": "Inställningar",
       "unconfigured": "ej konfigurerad",
       "vehicles": "Mina fordon",
-      "welcomeBannerText": "Börja med att skapa minst en/ett **laddare**, **värmekälla**, **elnät**, **solceller**, **batteri** eller **ytterligare mätare**. Om du vill testa, välj ett **demotillbehör**.",
-      "welcomeBannerTitle": "Låt oss konfigurera ditt system!",
-      "yaml": "Konfigurera i evcc.yaml. Kan inte ändras i UI."
+      "welcomeBannerText": "Börja med att skapa minst en **laddare**, **värmare**, **nät**, **solcell**, **batteri** eller **extra mätare**. Om du bara vill testa, välj en **demoenhet**.",
+      "welcomeBannerTitle": "Låt oss konfigurera ditt system!"
     },
     "messaging": {
       "description": "Få notiser om dina laddningar.",
@@ -543,6 +561,7 @@
       "integrations": "Integrationer",
       "loadpoints": "Laddare & värmekällor",
       "meter": "Sol & batteri",
+      "services": "Tjänster",
       "system": "System",
       "vehicles": "Fordon"
     },
@@ -740,12 +759,14 @@
   "forecast": {
     "co2": {
       "average": "Genomsnitt",
+      "constant": "CO₂ intensitet",
       "lowestHour": "Timme med lägst CO₂",
       "range": "Intervall"
     },
     "modalTitle": "Prognos",
     "price": {
       "average": "Genomsnitt",
+      "constant": "Pris",
       "lowestHour": "Billigaste timmen",
       "range": "Intervall"
     },
@@ -762,6 +783,9 @@
       "price": "Pris",
       "solar": "Sol"
     }
+  },
+  "general": {
+    "note": "Anmärkning:"
   },
   "header": {
     "about": "Om",
@@ -904,6 +928,7 @@
       "repeating": "återkommande",
       "repeatingPlans": "Återkommande planer",
       "selectAll": "Välj alla",
+      "strategyDisabledDescription": "Laddningen startar så sent som möjligt för att avslutas precis i tid före avfärd. Med dynamiska elpriser eller CO₂-avgifter finns fler möjligheter här.",
       "strategySettings": "Strategiinställningar",
       "time": "Tid",
       "title": "Plan",
@@ -958,7 +983,7 @@
     },
     "loadpointSettings": {
       "batteryBoost": {
-        "description": "Snabbladdning från hembatteri.",
+        "description": "Snabbladdning från hembatteri tills det är urladdat till {limit}.",
         "label": "Batteri Boost",
         "mode": "Endast tillgänglig vid 'Sol' och 'Min+Sol' läge.",
         "once": "Boost är aktiverat för denna laddning."
@@ -1113,7 +1138,6 @@
   "passwordModal": {
     "description": "Använd lösenord för att skydda inställningarna. Huvudskärmen kan användas utan att logga in.",
     "empty": "Lösenordet får inte vara tomt",
-    "error": "Fel: ",
     "labelCurrent": "Nuvarande lösenord",
     "labelNew": "Nytt lösenord",
     "labelRepeat": "Upprepa lösenord",
@@ -1227,7 +1251,7 @@
     },
     "hiddenFeatures": {
       "label": "Experimentella funktioner",
-      "value": "Visa experimentella funktioner."
+      "value": "Aktivera experimentella funktioner."
     },
     "language": {
       "auto": "Automatisk",
