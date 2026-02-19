@@ -35,4 +35,3 @@ render: |
   {{- include "modbus" . }}
   tempsource: {{ .tempsource }}
   scale: {{ .scale }}
-  relayheaterpower: {{ .relayheaterpower }}
