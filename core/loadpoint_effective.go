@@ -210,6 +210,11 @@ func (lp *Loadpoint) effectiveLimitSoc() int {
 		}
 	}
 
+	// return 70°C for heating devices
+	if lp.chargerHasFeature(api.Heating) {
+		return 70
+	}
+
 	// MUST return 100 here as UI looks at effectiveLimitSoc and not limitSoc (VehicleSoc.vue)
 	return 100
 }
