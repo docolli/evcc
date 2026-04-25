@@ -34,15 +34,16 @@ import (
 
 // MyPv charger implementation
 type MyPv struct {
-	log     *util.Logger
-	conn    *modbus.Connection
-	lp      loadpoint.API
-	power   uint32
-	scale   float64
-	name    string
-	statusC uint16
-	enabled bool
-	regTemp uint16
+	log         *util.Logger
+	conn        *modbus.Connection
+	lp          loadpoint.API
+	power       uint32
+	heaterpower uint32
+	scale       float64
+	name        string
+	statusC     uint16
+	enabled     bool
+	regTemp     uint16
 }
 
 const (
@@ -74,6 +75,10 @@ func init() {
 		return newMyPvFromConfig(ctx, "ac-thor", other, 9)
 	})
 
+	registry.AddCtx("ac-thor-9s", func(ctx context.Context, other map[string]any) (api.Charger, error) {
+		return newMyPvFromConfig(ctx, "ac-thor-9s", other, 9)
+	})
+
 	registry.AddCtx("ac-elwa-e", func(ctx context.Context, other map[string]any) (api.Charger, error) {
 		return newMyPvFromConfig(ctx, "ac-elwa-e", other, 2)
 	})
@@ -85,23 +90,25 @@ func newMyPvFromConfig(ctx context.Context, name string, other map[string]any, s
 		modbus.TcpSettings `mapstructure:",squash"`
 		TempSource         int
 		Scale              float64
+		HeaterPower        uint32
 	}{
 		TcpSettings: modbus.TcpSettings{
 			ID: 1, // default
 		},
-		TempSource: 1,
-		Scale:      1,
+		TempSource:  1,
+		Scale:       1,
+		HeaterPower: 0,
 	}
 
 	if err := util.DecodeOther(other, &cc); err != nil {
 		return nil, err
 	}
 
-	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale)
+	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, cc.HeaterPower)
 }
 
 // NewMyPv creates myPV AC Elwa 2 or Thor charger
-func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64) (api.Charger, error) {
+func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, heaterpower uint32) (api.Charger, error) {
 	conn, err := modbus.NewConnection(ctx, uri, "", "", 0, modbus.Tcp, slaveID)
 	if err != nil {
 		return nil, err
@@ -118,13 +125,19 @@ func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource in
 	log := util.NewLogger(name)
 	conn.Logger(log.TRACE)
 
+	if heaterpower <= 0 || heaterpower > 9000 {
+		heaterpower = 9000
+	}
+	scale = 9000 / float64(heaterpower)
+
 	wb := &MyPv{
-		log:     log,
-		conn:    conn,
-		name:    name,
-		statusC: statusC,
-		scale:   scale,
-		regTemp: elwaTemp[tempSource-1],
+		log:         log,
+		conn:        conn,
+		name:        name,
+		statusC:     statusC,
+		scale:       scale,
+		heaterpower: heaterpower,
+		regTemp:     elwaTemp[tempSource-1],
 	}
 
 	go wb.heartbeat(ctx, 30*time.Second)
