@@ -1,4 +1,4 @@
-template: ac-thor
+template: ac-thor-9s
 products:
   - brand: my-PV
     description:
@@ -8,33 +8,63 @@ requirements:
   description:
     de: |
       Über das lokale Webinterface des AC•THOR muss der Wert für die "Zeitablauf Ansteuerung" auf einen Wert etwas größer der Intervall Zeit von evcc (z.B. + 5s) gesetzt werden.
-
-      Hat der Heizstab am geregelten Ausgang < 9 kW muss der Parameter `heaterpower` gesetzt werden.
-
-      Die Betriebsart M3: 9 + 9 kW mit einem zusätzlichen Heizstab am Relais-Ausgang wird unterstützt. Ohne Lastmessung mittels my-PV Meter muss "Last am Relais" im lokalen Webinterface des AC•THOR passend zur Nennleistung des Heizstabs am Relais gesetzt werden.
-      Hat der Heizstab am geregelten Ausgang < 9 kW ist AC•THOR Firmware a0022200 oder höher erforderlich und der Wert für "Last am Relais" muss folgendermaßen berechnet werden:
-      Last am Relais = Nennleistung des Heizstabs am Relais * 9000 / Nennleistung des Heizstabs am Relais
     en: |
       Use the local web interface of AC•THOR to set the value "Power timeout" to a value slightly higher (e.g. + 5s) than the interval time of evcc.
-
-      If the heating element at the controlled output has < 9kW, the parameter `heaterpower` must be set.
-
-      Operation mode M3: 9 + 9 kW with an additional heater connected to the relay output is supported. Without load measurement using my-PV meter, the "Load at relay" setting in the local web interface of the AC•THOR must be set to match the nominal power of the heating element at the relay.
-      If the heater at the controlled output has < 9kW, AC•THOR firmware a0022200 or higher is required and the value for "Load at relay" must be calculated as follows:
-      Load at relay = nominal power of the heater at the relay * 9000 / nominal power of the heater at the relay
   evcc: ["sponsorship"]
 params:
   - name: modbus
     choice: ["tcpip"]
+  - name: heaterpower
+    type: int
+    unit: W
+    default: 9000
+    required: true
+    description:
+      de: "Nennleistung des Heizstabs am geregelten Ausgang"
+      en: "Nominal power of the heater on controlled output"
+    help:
+      de: "Wichtig für die korrekte Skalierung der Leistungsvorgabe."
+      en: "Important for correct scaling of the target power."
   - name: tempsource
     choice: ["1", "2", "3"]
     default: "1"
-  - name: heaterpower
-    type: uint32
-    default: 0
-    decription:
-      de: "Nennleistung des Heizstabs am geregelten Ausgang"
-      en: "Nominal power of the heater connected to controlled output"
+  - name: operationmode
+    advanced: true
+    type: choice
+    choice: ["M3 9 + 9 kW"]
+    description:
+      de: Betriebsart
+      en: Operation Mode
+    help:
+      de: |
+        Ist der AC•THOR auf die Betriebsart `M3` konfiguriert, so wird ein zusätzlicher Heizstab am Relais-Ausgang angesteuert.
+        Ohne Lastmessung mittels my-PV Meter muss im lokalen Webinterface des AC•THOR der Wert für "Last am Relais" auf die Nennleistung des Heizstabs am Relais gesetzt werden.
+        
+        [siehe Anleitung AC•THOR](https://www.my-pv.com/de/manuals/acthor-acthor-9s/#n-43m3-warmwasser-6kw18kw)
+        
+        Hat der Heizstab am geregelten Ausgang < 9 kW ist AC•THOR Firmware a0022200 oder höher erforderlich und der Wert für "Last am Relais" muss folgendermaßen berechnet werden:
+        
+        `A = Nennleistung des Heizstabs am Relais`
+
+        `B = Nennleistung des Heizstabs am geregelten Ausgang`
+
+        `Last am Relais =  A * 9000 / B`
+
+      en: |
+        If the AC•THOR is configured to operation mode `M3`, an additional heating element is controlled by the relay output.
+        Without load measurement using my-PV meter, the "Load at relay" setting in the local web interface of the AC•THOR must be set to the nominal power of the heating element at the relay.
+        
+        [see manual AC•THOR](https://www.my-pv.com/en/manuals/acthor-acthor-9s/#n-43m3-hot-water-6-kw18kw)
+
+        If the heater at the controlled output has < 9kW, AC•THOR firmware a0022200 or higher is required and the value for "Load at relay" must be calculated as follows:
+        
+        `A = Nominal power of heater at the relay`
+
+        `B = Nominal power of heater at controlled output`
+
+        `Load at relay =  A * 9000 / B`
+
+
 render: |
   type: ac-thor-9s
   {{- include "modbus" . }}
