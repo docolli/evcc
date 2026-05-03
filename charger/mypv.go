@@ -34,16 +34,18 @@ import (
 
 // MyPv charger implementation
 type MyPv struct {
-	log         *util.Logger
-	conn        *modbus.Connection
-	lp          loadpoint.API
-	power       uint32
-	heaterpower uint32
-	scale       float64
-	name        string
-	statusC     uint16
-	enabled     bool
-	regTemp     uint16
+	log            *util.Logger
+	conn           *modbus.Connection
+	lp             loadpoint.API
+	power          uint32
+	heaterpower    uint32
+	maxheaterpower uint32
+	scale          float64
+	name           string
+	statusC        uint16
+	enabled        bool
+	regTemp        uint16
+	stlReleased    bool
 }
 
 const (
@@ -67,48 +69,50 @@ var elwaStandbyPower uint16 = 10
 func init() {
 	// https://github.com/evcc-io/evcc/discussions/12761
 	registry.AddCtx("ac-elwa-2", func(ctx context.Context, other map[string]any) (api.Charger, error) {
-		return newMyPvFromConfig(ctx, "ac-elwa-2", other, 2)
+		return newMyPvFromConfig(ctx, "ac-elwa-2", other, 2, 0)
 	})
 
 	// https: // github.com/evcc-io/evcc/issues/18020
 	registry.AddCtx("ac-thor", func(ctx context.Context, other map[string]any) (api.Charger, error) {
-		return newMyPvFromConfig(ctx, "ac-thor", other, 9)
+		return newMyPvFromConfig(ctx, "ac-thor", other, 9, 3000)
 	})
 
 	registry.AddCtx("ac-thor-9s", func(ctx context.Context, other map[string]any) (api.Charger, error) {
-		return newMyPvFromConfig(ctx, "ac-thor-9s", other, 9)
+		return newMyPvFromConfig(ctx, "ac-thor-9s", other, 9, 9000)
 	})
 
 	registry.AddCtx("ac-elwa-e", func(ctx context.Context, other map[string]any) (api.Charger, error) {
-		return newMyPvFromConfig(ctx, "ac-elwa-e", other, 2)
+		return newMyPvFromConfig(ctx, "ac-elwa-e", other, 2, 0)
 	})
 }
 
 // newMyPvFromConfig creates a MyPv charger from generic config
-func newMyPvFromConfig(ctx context.Context, name string, other map[string]any, statusC uint16) (api.Charger, error) {
+func newMyPvFromConfig(ctx context.Context, name string, other map[string]any, statusC uint16, maxheaterpower uint32) (api.Charger, error) {
 	cc := struct {
 		modbus.TcpSettings `mapstructure:",squash"`
 		TempSource         int
 		Scale              float64
 		HeaterPower        uint32
+		MaxHeaterPower     uint32
 	}{
 		TcpSettings: modbus.TcpSettings{
 			ID: 1, // default
 		},
-		TempSource:  1,
-		Scale:       1,
-		HeaterPower: 0,
+		TempSource:     1,
+		Scale:          1,
+		HeaterPower:    maxheaterpower,
+		MaxHeaterPower: maxheaterpower,
 	}
 
 	if err := util.DecodeOther(other, &cc); err != nil {
 		return nil, err
 	}
 
-	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, cc.HeaterPower)
+	return NewMyPv(ctx, name, cc.URI, cc.ID, cc.TempSource, statusC, cc.Scale, cc.HeaterPower, cc.MaxHeaterPower)
 }
 
 // NewMyPv creates myPV AC Elwa 2 or Thor charger
-func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, heaterpower uint32) (api.Charger, error) {
+func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource int, statusC uint16, scale float64, heaterpower uint32, maxheaterpower uint32) (api.Charger, error) {
 	conn, err := modbus.NewConnection(ctx, uri, "", "", 0, modbus.Tcp, slaveID)
 	if err != nil {
 		return nil, err
@@ -125,19 +129,21 @@ func NewMyPv(ctx context.Context, name, uri string, slaveID uint8, tempSource in
 	log := util.NewLogger(name)
 	conn.Logger(log.TRACE)
 
-	if heaterpower <= 0 || heaterpower > 9000 {
-		heaterpower = 9000
+	if heaterpower <= 0 || heaterpower > maxheaterpower {
+		heaterpower = maxheaterpower
 	}
-	scale = 9000 / float64(heaterpower)
+	scale = float64(maxheaterpower) / float64(heaterpower)
 
 	wb := &MyPv{
-		log:         log,
-		conn:        conn,
-		name:        name,
-		statusC:     statusC,
-		scale:       scale,
-		heaterpower: heaterpower,
-		regTemp:     elwaTemp[tempSource-1],
+		log:            log,
+		conn:           conn,
+		name:           name,
+		statusC:        statusC,
+		scale:          scale,
+		heaterpower:    heaterpower,
+		maxheaterpower: maxheaterpower,
+		regTemp:        elwaTemp[tempSource-1],
+		stlReleased:    false,
 	}
 
 	go wb.heartbeat(ctx, 30*time.Second)
@@ -184,7 +190,7 @@ func (wb *MyPv) Status() (api.ChargeStatus, error) {
 	var b []byte
 	var err error
 
-	if wb.name == "ac-thor" {
+	if wb.name == "ac-thor-9s" {
 		b, err := wb.conn.ReadHoldingRegisters(elwaRegLoadState, 1)
 		if err != nil {
 			return api.StatusNone, err
@@ -192,7 +198,12 @@ func (wb *MyPv) Status() (api.ChargeStatus, error) {
 
 		// all loads detached
 		if binary.BigEndian.Uint16(b) == 0 {
-			return api.StatusA, nil
+			if wb.stlReleased == false {
+				wb.log.WARN.Println("safety temperature limiter has released")
+			}
+			wb.stlReleased = true
+		} else {
+			wb.stlReleased = false
 		}
 	}
 
@@ -305,7 +316,7 @@ func (wb *MyPv) CurrentPower() (float64, error) {
 	}
 
 	res := float64(binary.BigEndian.Uint16(b))
-	if wb.name != "ac-thor" {
+	if wb.name != "ac-thor" && wb.name != "ac-thor-9s" {
 		return res, nil
 	}
 
