@@ -205,6 +205,7 @@ func (wb *MyPv) Status() (api.ChargeStatus, error) {
 		} else {
 			wb.stlReleased = false
 		}
+		wb.log.INFO.Printf("STL release state: %d", wb.stlReleased)
 	}
 
 	res := api.StatusB
